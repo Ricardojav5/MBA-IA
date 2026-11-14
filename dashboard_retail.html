@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard Operacional Retail</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  body { background:#0f172a; }
+  .card { background:#111c30; border:1px solid #1e293b; }
+  .kpi-ok { border-left:4px solid #22c55e; }
+  .kpi-warn { border-left:4px solid #f59e0b; }
+  .kpi-bad { border-left:4px solid #ef4444; }
+  .heat-cell { width:100%; aspect-ratio:1.6; border-radius:4px; }
+  input[type=range] { accent-color:#38bdf8; }
+</style>
+</head>
+<body class="text-slate-200 min-h-screen">
+
+<header class="border-b border-slate-800 bg-[#0b1220] px-6 py-4">
+  <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold text-white">Dashboard Operacional Retail</h1>
+      <p class="text-sm text-slate-400">Ventas, rentabilidad, canales y comportamiento horario</p>
+    </div>
+    <div class="flex items-center gap-2 text-xs">
+      <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">Datos operativos</span>
+      <span class="px-3 py-1 rounded-full bg-sky-500/10 text-sky-300 border border-sky-500/30">Actualizado hoy</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+
+  <!-- Filtros -->
+  <section class="card rounded-xl p-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div>
+        <label class="text-xs text-slate-400">Fecha inicial</label>
+        <input id="startDate" type="date" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Fecha final</label>
+        <input id="endDate" type="date" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Ciudad</label>
+        <select id="cityFilter" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          <option value="all">Todas</option>
+          <option>Barranquilla</option><option>Bogotá</option><option>Cali</option><option>Medellín</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400">Categoría</label>
+        <select id="categoryFilter" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm">
+          <option value="all">Todas</option>
+          <option>Tecnología</option><option>Moda</option><option>Hogar</option><option>Deportes</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-5">
+      <div>
+        <div class="flex justify-between text-xs text-slate-400"><span>Volumen mínimo de venta</span><span id="volumeLabel">$0</span></div>
+        <input id="volumeSlider" type="range" min="0" max="5000" step="50" value="0" class="w-full mt-2">
+      </div>
+      <div>
+        <div class="flex justify-between text-xs text-slate-400"><span>Horizonte temporal</span><span id="timeLabel">12 meses</span></div>
+        <input id="timeSlider" type="range" min="1" max="36" step="1" value="12" class="w-full mt-2">
+      </div>
+      <div>
+        <div class="flex justify-between text-xs text-slate-400"><span>Tolerancia de margen</span><span id="marginLabel">30%</span></div>
+        <input id="marginSlider" type="range" min="10" max="60" step="1" value="30" class="w-full mt-2">
+      </div>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div id="kpiSales" class="card rounded-xl p-5 kpi-ok">
+      <p class="text-xs text-slate-400">Ventas totales</p>
+      <p id="salesValue" class="text-3xl font-semibold text-white mt-2">$0</p>
+      <p id="salesTrend" class="text-xs mt-2 text-slate-400">—</p>
+    </div>
+    <div id="kpiTickets" class="card rounded-xl p-5 kpi-ok">
+      <p class="text-xs text-slate-400">Transacciones</p>
+      <p id="ticketsValue" class="text-3xl font-semibold text-white mt-2">0</p>
+      <p id="ticketsTrend" class="text-xs mt-2 text-slate-400">—</p>
+    </div>
+    <div id="kpiTicket" class="card rounded-xl p-5 kpi-ok">
+      <p class="text-xs text-slate-400">Ticket promedio</p>
+      <p id="ticketValue" class="text-3xl font-semibold text-white mt-2">$0</p>
+      <p id="ticketTrend" class="text-xs mt-2 text-slate-400">—</p>
+    </div>
+    <div id="kpiMargin" class="card rounded-xl p-5 kpi-ok">
+      <p class="text-xs text-slate-400">Margen estimado</p>
+      <p id="marginValue" class="text-3xl font-semibold text-white mt-2">0%</p>
+      <p id="marginTrend" class="text-xs mt-2 text-slate-400">—</p>
+    </div>
+  </section>
+
+  <!-- Línea y dona -->
+  <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+    <div class="card rounded-xl p-5 xl:col-span-2">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="font-semibold text-white">Evolución mensual de ventas</h2>
+        <span class="text-xs text-slate-400">Ventas vs. margen</span>
+      </div>
+      <canvas id="lineChart" height="260"></canvas>
+    </div>
+    <div class="card rounded-xl p-5">
+      <h2 class="font-semibold text-white mb-4">Participación por canal</h2>
+      <canvas id="donutChart" height="260"></canvas>
+    </div>
+  </section>
+
+  <!-- Barras y dispersión -->
+  <section class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    <div class="card rounded-xl p-5">
+      <h2 class="font-semibold text-white mb-4">Ventas por ciudad</h2>
+      <canvas id="barChart" height="280"></canvas>
+    </div>
+    <div class="card rounded-xl p-5">
+      <h2 class="font-semibold text-white mb-4">Precio unitario vs. cantidad vendida</h2>
+      <canvas id="scatterChart" height="280"></canvas>
+    </div>
+  </section>
+
+  <!-- Heatmap -->
+  <section class="card rounded-xl p-5">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
+      <h2 class="font-semibold text-white">Mapa de calor: día de la semana × hora</h2>
+      <span class="text-xs text-slate-400">Intensidad = ventas estimadas</span>
+    </div>
+    <div class="overflow-x-auto">
+      <div id="heatmap" class="min-w-[720px] space-y-1"></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const transactions = [];
+const cities = ["Barranquilla","Bogotá","Cali","Medellín"];
+const categories = ["Tecnología","Moda","Hogar","Deportes"];
+const channels = ["Tienda Física","Online"];
+const days = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+
+let seed = 42;
+function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+
+for (let i=0; i<1200; i++) {
+  const month = Math.floor(rnd()*36);
+  const date = new Date(2023, month, 1 + Math.floor(rnd()*28));
+  const city = cities[Math.floor(rnd()*cities.length)];
+  const category = categories[Math.floor(rnd()*categories.length)];
+  const channel = channels[Math.floor(rnd()*channels.length)];
+  const price = 50 + rnd()*900;
+  const quantity = 1 + Math.floor(rnd()*20);
+  const shipping = 10 + rnd()*60;
+  const cost = price * quantity * (0.45 + rnd()*0.2);
+  const total = price * quantity + shipping;
+  const hour = Math.floor(rnd()*24);
+  const day = Math.floor(rnd()*7);
+  transactions.push({date, city, category, channel, price, quantity, shipping, cost, total, hour, day});
+}
+
+const fmt = n => "$" + Math.round(n).toLocaleString("es-CO");
+const pct = n => n.toFixed(1) + "%";
+
+const lineChart = new Chart(document.getElementById("lineChart"), {
+  type:"line",
+  data:{labels:[],datasets:[
+    {label:"Ventas",data:[],borderColor:"#38bdf8",backgroundColor:"rgba(56,189,248,.15)",fill:true,tension:.35},
+    {label:"Margen",data:[],borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,.08)",fill:true,tension:.35}
+  ]},
+  options:{plugins:{legend:{labels:{color:"#94a3b8"}}},scales:{x:{ticks:{color:"#64748b"},grid:{color:"#1e293b"}},y:{ticks:{color:"#64748b"},grid:{color:"#1e293b"}}}}
+});
+
+const barChart = new Chart(document.getElementById("barChart"), {
+  type:"bar",
+  data:{labels:[],datasets:[{label:"Ventas",data:[],backgroundColor:"#818cf8",borderRadius:6}]},
+  options:{indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#64748b"},grid:{color:"#1e293b"}},y:{ticks:{color:"#94a3b8"},grid:{display:false}}}}
+});
+
+const scatterChart = new Chart(document.getElementById("scatterChart"), {
+  type:"scatter",
+  data:{datasets:[{label:"Transacciones",data:[],backgroundColor:"rgba(56,189,248,.65)",pointRadius:4}]},
+  options:{plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:"Precio unitario",color:"#94a3b8"},ticks:{color:"#64748b"},grid:{color:"#1e293b"}},y:{title:{display:true,text:"Cantidad",color:"#94a3b8"},ticks:{color:"#64748b"},grid:{color:"#1e293b"}}}}
+});
+
+const donutChart = new Chart(document.getElementById("donutChart"), {
+  type:"doughnut",
+  data:{labels:[],datasets:[{data:[],backgroundColor:["#38bdf8","#22c55e","#f59e0b","#a78bfa"],borderWidth:0}]},
+  options:{cutout:"62%",plugins:{legend:{position:"bottom",labels:{color:"#94a3b8"}}}}
+});
+
+function getFiltered() {
+  const start = new Date(document.getElementById("startDate").value || "2023-01-01");
+  const end = new Date(document.getElementById("endDate").value || "2025-12-31");
+  const city = document.getElementById("cityFilter").value;
+  const category = document.getElementById("categoryFilter").value;
+  const minVolume = +document.getElementById("volumeSlider").value;
+  const months = +document.getElementById("timeSlider").value;
+  const cutoff = new Date(end); cutoff.setMonth(cutoff.getMonth() - months);
+
+  return transactions.filter(t =>
+    t.date >= start && t.date <= end &&
+    (city === "all" || t.city === city) &&
+    (category === "all" || t.category === category) &&
+    t.total >= minVolume
+  ).slice(-months * 40);
+}
+
+function setKpi(id, value, trend, ok, warn) {
+  const card = document.getElementById(id);
+  const cls = value >= ok ? "kpi-ok" : value >= warn ? "kpi-warn" : "kpi-bad";
+  card.classList.remove("kpi-ok","kpi-warn","kpi-bad");
+  card.classList.add(cls);
+}
+
+function render() {
+  const data = getFiltered();
+  const minVolume = +document.getElementById("volumeSlider").value;
+  const sales = data.reduce((s,t)=>s+t.total,0);
+  const tickets = data.length;
+  const avgTicket = tickets ? sales/tickets : 0;
+  const margin = sales ? ((sales - data.reduce((s,t)=>s+t.cost+t.shipping,0)) / sales) * 100 : 0;
+
+  document.getElementById("salesValue").textContent = fmt(sales);
+  document.getElementById("ticketsValue").textContent = tickets.toLocaleString("es-CO");
+  document.getElementById("ticketValue").textContent = fmt(avgTicket);
+  document.getElementById("marginValue").textContent = pct(margin);
+
+  const marginThreshold = +document.getElementById("marginSlider").value;
+  setKpi("kpiSales", sales, "", sales*0.7, sales*0.4);
+  setKpi("kpiTickets", tickets, "", tickets*0.7, tickets*0.4);
+  setKpi("kpiTicket", avgTicket, "", avgTicket*0.7, avgTicket*0.4);
+  setKpi("kpiMargin", margin, "", marginThreshold, marginThreshold*0.6);
+
+  document.getElementById("marginTrend").textContent = `Umbral operativo: ${marginThreshold}%`;
+  document.getElementById("salesTrend").textContent = `${tickets} transacciones consideradas`;
+  document.getElementById("ticketsTrend").textContent = `Filtro de volumen: ${fmt(minVolume)}`;
+  document.getElementById("ticketTrend").textContent = `Promedio por operación`;
+
+  const monthly = {};
+  data.forEach(t => {
+    const key = t.date.toISOString().slice(0,7);
+    monthly[key] = monthly[key] || {sales:0, margin:0};
+    monthly[key].sales += t.total;
+    monthly[key].margin += t.total - t.cost - t.shipping;
+  });
+  const labels = Object.keys(monthly).sort();
+  lineChart.data.labels = labels;
+  lineChart.data.datasets[0].data = labels.map(k=>monthly[k].sales);
+  lineChart.data.datasets[1].data = labels.map(k=>monthly[k].margin);
+  lineChart.update();
+
+  const byCity = {};
+  data.forEach(t => byCity[t.city] = (byCity[t.city]||0)+t.total);
+  const cityLabels = Object.keys(byCity).sort((a,b)=>byCity[b]-byCity[a]);
+  barChart.data.labels = cityLabels;
+  barChart.data.datasets[0].data = cityLabels.map(c=>byCity[c]);
+  barChart.update();
+
+  scatterChart.data.datasets[0].data = data.slice(0,300).map(t=>({x:t.price,y:t.quantity}));
+  scatterChart.update();
+
+  const byChannel = {};
+  data.forEach(t => byChannel[t.channel] = (byChannel[t.channel]||0)+t.total);
+  donutChart.data.labels = Object.keys(byChannel);
+  donutChart.data.datasets[0].data = Object.values(byChannel);
+  donutChart.update();
+
+  const heat = Array.from({length:7},()=>Array(24).fill(0));
+  data.forEach(t => heat[t.day][t.hour] += t.total);
+  const max = Math.max(...heat.flat(),1);
+  const container = document.getElementById("heatmap");
+  container.innerHTML = `<div class="grid grid-cols-25 gap-1 text-[10px] text-slate-500"><div></div>${Array.from({length:24},(_,h)=>`<div class="text-center">${h}</div>`).join("")}</div>` +
+    days.map((d,i)=>`<div class="grid grid-cols-25 gap-1 items-center"><div class="text-xs text-slate-400 w-8">${d}</div>${heat[i].map(v=>{
+      const intensity = v/max;
+      return `<div class="heat-cell" style="background:rgba(56,189,248,${0.08+intensity*0.85})" title="${d} ${i}: ${fmt(v)}"></div>`;
+    }).join("")}</div>`).join("");
+}
+
+["startDate","endDate","cityFilter","categoryFilter","volumeSlider","timeSlider","marginSlider"].forEach(id=>{
+  document.getElementById(id).addEventListener("input",()=>{
+    document.getElementById("volumeLabel").textContent = fmt(+document.getElementById("volumeSlider").value);
+    document.getElementById("timeLabel").textContent = document.getElementById("timeSlider").value + " meses";
+    document.getElementById("marginLabel").textContent = document.getElementById("marginSlider").value + "%";
+    render();
+  });
+});
+
+document.getElementById("startDate").value = "2023-01-01";
+document.getElementById("endDate").value = "2025-12-31";
+render();
+</script>
+</body>
+</html>
